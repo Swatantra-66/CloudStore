@@ -1,0 +1,7 @@
+aws_region                 = "ap-south-1"
+environment                = "prod"
+app_name                   = "cloudstore"
+instance_type              = "t3.small"
+instance_count             = 3
+enable_detailed_monitoring = true
+allowed_http_cidr          = ["0.0.0.0/0"]
