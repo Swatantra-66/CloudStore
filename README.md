@@ -106,21 +106,3 @@ terraform workspace select prod
 terraform plan -var-file="terraform.tfvars.prod"
 ```
 
----
-
-## Presentation Script for Tomorrow
-
-1. **Introduction (30 seconds):**
-   > *"Good morning. Today I am presenting our multi-environment infrastructure built with Terraform. Our goal was to create completely isolated environments for dev and prod within a single AWS account, ensuring zero hardcoded IDs, dynamic discovery of cloud resources, and distinct cost-versus-performance configurations."*
-
-2. **Demonstrating Workspaces & State Isolation (1 minute):**
-   > *"We use Terraform workspaces to isolate state. Running `terraform workspace list` shows our `dev` and `prod` workspaces. Terraform automatically isolates the state files under `.terraform.tfstate.d`, preventing any state overlap or accidental production pollution."*
-
-3. **Demonstrating Dynamic Data Blocks (1 minute):**
-   > *"Looking at `main.tf`, we have zero hardcoded IDs. We use 5 dynamic `data` blocks to automatically discover the default VPC, query active subnets, fetch available AZs, and resolve the latest Amazon Linux 2023 AMI dynamically. Running `grep -c '^data ' main.tf` validates this directly."*
-
-4. **Demonstrating Dev vs. Prod Differences (1.5 minutes):**
-   > *"Our variables define the differences between environments. In `terraform.tfvars.dev`, we provision 1 `t3.micro` instance with standard storage and basic monitoring to keep costs minimal. In `terraform.tfvars.prod`, we provision 3 `t3.small` instances distributed across separate availability zones with detailed monitoring and versioned S3 storage."*
-
-5. **Closing & Validation (30 seconds):**
-   > *"All code is validated with `terraform validate` and formatted according to HashiCorp best practices with `terraform fmt`. Thank you!"*
