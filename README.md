@@ -22,25 +22,62 @@ The infrastructure models a high-traffic e-commerce web platform ("CloudStore"):
 - **Development (`dev`)**: A lightweight sandbox environment for rapid feature testing. Single `t3.micro` instance, basic monitoring, cost-optimized 20GB root storage, and unversioned S3 assets.
 - **Production (`prod`)**: A highly available, resilient environment. Three `t3.small` instances distributed across multiple AWS Availability Zones using modulo distribution (`element(data.aws_subnets.default.ids, count.index % length(...))`), detailed CloudWatch monitoring enabled, 50GB encrypted root volume, and versioned S3 storage.
 
+### 1. AWS Global Infrastructure & Network Topology
+
+```mermaid
+flowchart TD
+    subgraph AWS["AWS Global Infrastructure (Region: ap-south-1 Mumbai)"]
+        subgraph VPC["Default VPC: vpc-032b2629fa98794e0"]
+            IGW["Internet Gateway: igw-074fd3ff...<br/>(Public Ingress / Egress)"]
+            RT["Route Table: rtb-0b25f75f...<br/>(Traffic Director)"]
+
+            IGW --> RT
+
+            subgraph AZA["Availability Zone A (ap-south-1a)"]
+                SubnetA["Subnet A (172.31.0.0/20)<br/>subnet-0c14ee155aa60b7a7"]
+            end
+
+            subgraph AZB["Availability Zone B (ap-south-1b)"]
+                SubnetB["Subnet B (172.31.16.0/20)<br/>subnet-04185031ed52c69c4"]
+            end
+
+            subgraph AZC["Availability Zone C (ap-south-1c)"]
+                SubnetC["Subnet C (172.31.32.0/20)<br/>subnet-0c61ae1a251baf62c"]
+            end
+
+            RT --> SubnetA
+            RT --> SubnetB
+            RT --> SubnetC
+        end
+    end
 ```
-                    ┌────────────────────────────────────────────────┐
-                    │                   AWS Cloud                    │
-                    │               Default VPC (Data)               │
-                    └───────────────────────┬────────────────────────┘
-                                            │
-               ┌────────────────────────────┴────────────────────────────┐
-               ▼                                                         ▼
-    ┌──────────────────────┐                                  ┌──────────────────────┐
-    │   Workspace: "dev"   │                                  │  Workspace: "prod"   │
-    │  (Cost-Optimized)    │                                  │   (High-Resilience)  │
-    ├──────────────────────┤                                  ├──────────────────────┤
-    │ • 1x t3.micro EC2    │                                  │ • 3x t3.small EC2s   │
-    │ • Single AZ Subnet   │                                  │ • Multi-AZ Balanced  │
-    │ • Basic Monitoring   │                                  │ • Detailed Monitoring│
-    │ • 20GB GP3 Volume    │                                  │ • 50GB GP3 Volume    │
-    │ • Unversioned S3     │                                  │ • Versioned S3       │
-    │ • Tags: Env = "dev"  │                                  │ • Tags: Env = "prod" │
-    └──────────────────────┘                                  └──────────────────────┘
+
+### 2. How Terraform Provisions dev vs. prod
+
+```mermaid
+flowchart TD
+    Code["Terraform Codebase<br/>(main.tf + variables.tf)"]
+
+    subgraph DevWS["Workspace: dev (terraform.tfvars.dev)"]
+        direction TB
+        DevEC2["1x EC2 Instance (t3.micro)<br/>Single Subnet (AZ-C)<br/>Cost-Optimized Sandbox"]
+        DevS3["S3: cloudstore-dev-assets<br/>Versioning: Suspended"]
+        DevEC2 ~~~ DevS3
+    end
+
+    subgraph ProdWS["Workspace: prod (terraform.tfvars.prod)"]
+        direction TB
+        subgraph MultiAZ["Multi-AZ Resilient Cluster (count = 3)"]
+            ProdEC2A["EC2 #1 (t3.small)<br/>Subnet A (ap-south-1a)"]
+            ProdEC2B["EC2 #2 (t3.small)<br/>Subnet B (ap-south-1b)"]
+            ProdEC2C["EC2 #3 (t3.small)<br/>Subnet C (ap-south-1c)"]
+        end
+        ProdS3["S3: cloudstore-prod-assets<br/>Versioning: Enabled (AES256)"]
+        MultiAZ ~~~ ProdS3
+    end
+
+    Code -->|"terraform workspace select dev<br/>(instance_count = 1)"| DevWS
+    Code -->|"terraform workspace select prod<br/>(instance_count = 3, modulo balancing)"| ProdWS
 ```
 
 ---
@@ -48,7 +85,7 @@ The infrastructure models a high-traffic e-commerce web platform ("CloudStore"):
 ## Repository Structure
 
 ```
-devops-mse1/
+CloudStore/
 ├── terraform.tf          # Terraform version & AWS provider configuration
 ├── variables.tf          # 7 input variables with validation & types
 ├── main.tf               # 5 dynamic data sources + EC2, SG, S3 resources
