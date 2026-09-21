@@ -98,7 +98,7 @@ CloudStore/
 
 ---
 
-## 🔍 The 4 Verification Commands (Evaluator Rubric)
+## The 4 Verification Commands (Evaluator Rubric)
 
 Run these exact commands in PowerShell or Bash:
 
@@ -143,3 +143,55 @@ terraform workspace select prod
 terraform plan -var-file="terraform.tfvars.prod"
 ```
 
+
+
+---
+
+## Deployment & Teardown Guide
+
+### Deploying Development (`dev`)
+```bash
+terraform workspace select dev
+terraform apply -var-file="terraform.tfvars.dev"
+```
+
+### Deploying Production (`prod`)
+```bash
+terraform workspace select prod
+terraform apply -var-file="terraform.tfvars.prod"
+```
+
+### Cleaning Up (Destroy Resources)
+```bash
+# Tear down dev
+terraform workspace select dev
+terraform destroy -var-file="terraform.tfvars.dev" -auto-approve
+
+# Tear down prod
+terraform workspace select prod
+terraform destroy -var-file="terraform.tfvars.prod" -auto-approve
+```
+
+---
+
+## Traffic Flow & Security
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Public Internet User
+    participant IGW as Internet Gateway (igw)
+    participant RT as Route Table (rtb)
+    participant NACL as Network ACL (Subnet Firewall)
+    participant SG as Security Group (Port 80 Ingress)
+    participant EC2 as EC2 Instance (Web Server)
+    participant S3 as S3 Asset Bucket
+
+    User->>IGW: HTTP Request (Port 80)
+    IGW->>RT: Forward to VPC Route Table
+    RT->>NACL: Pass through Subnet Network ACL
+    NACL->>SG: Inbound check (0.0.0.0/0 allowed on Port 80)
+    SG->>EC2: Serve HTTP Traffic
+    EC2-->>S3: Read / Write Application Assets
+    EC2-->>User: 200 OK (index.html rendered)
+```
